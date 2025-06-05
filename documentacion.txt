@@ -1,0 +1,278 @@
+# Twins Técnicos - Documentación Completa del Proyecto
+
+## 📋 Resumen del Proyecto
+Sistema de gestión de mantenimiento de sistemas contra incendios. Permite gestionar clientes, programar visitas preventivas, manejar tareas correctivas y trabajar offline desde dispositivos móviles.
+
+## 🏗️ Estructura del Proyecto
+
+```
+twins-tecnicos/
+├── src/
+│   ├── app/
+│   │   ├── layout.js                 ✅ Layout principal con AuthProvider
+│   │   ├── page.js                   ✅ Página de inicio (redirección)
+│   │   ├── login/page.js             ✅ Login con email/password y Google
+│   │   ├── register/page.js          ✅ Registro de usuarios
+│   │   ├── dashboard/page.js         ✅ Panel de control principal
+│   │   └── clients/
+│   │       ├── page.js               ✅ Lista de clientes con tabla y buscador
+│   │       ├── new/page.js           ✅ Formulario crear cliente
+│   │       └── [id]/
+│   │           ├── page.js           ✅ Detalle del cliente
+│   │           └── edit/page.js      ✅ Formulario editar cliente
+│   ├── components/
+│   │   ├── ProtectedRoute.js         ✅ Protección de rutas autenticadas
+│   │   └── layout/
+│   │       └── DashboardLayout.js    ✅ Layout con navegación y sidebar
+│   └── lib/
+│       ├── contexts/
+│       │   └── AuthContext.js        ✅ Context de autenticación
+│       └── firebase/
+│           ├── config.js             ✅ Configuración de Firebase
+│           ├── firebase.js           ✅ Inicialización de Firebase
+│           └── operations.js         ✅ Operaciones CRUD completas
+├── .env.local                        ✅ Variables de entorno
+└── package.json                      ✅ Dependencias instaladas
+```
+
+## 🔧 Stack Tecnológico
+- **Frontend**: Next.js 14 (App Router), JavaScript (sin TypeScript)
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **Backend**: Firebase (Auth + Firestore)
+- **Futuro**: PWA con next-pwa para funcionalidad offline
+
+## 🔑 Variables de Entorno (.env.local)
+```bash
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=tu-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=tu-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=tu-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=tu-project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+NEXT_PUBLIC_FIREBASE_APP_ID=tu-app-id
+```
+
+## 📊 Estructura de Datos en Firestore
+
+### Colección: `clients`
+```javascript
+{
+  companyName: "Empresa 1",              // Nombre de la empresa
+  referentName: "Juan Pérez",            // Nombre del referente
+  referentPosition: "Jefe Mantenimiento", // Cargo del referente
+  address: "Direccion 123",              // Dirección física
+  contractRef: "CONT-2025-001",          // Referencia del contrato
+  reportEmails: ["email1@empresa.com"],  // Array de correos para informes
+  frequency: "monthly",                  // weekly, monthly, bimonthly
+  createdAt: timestamp,
+  updatedAt: timestamp
+}
+```
+
+### Colección: `visits` (preventivas)
+```javascript
+{
+  clientId: "client_id",                 // Referencia al cliente
+  scheduledDate: timestamp,              // Fecha programada
+  status: "scheduled",                   // scheduled, completed
+  completedDate: timestamp,              // Fecha de completado
+  technicians: ["Juan", "María"],        // Array de técnicos presentes
+  notes: "Observaciones",                // Notas de la visita
+  photos: [],                           // Array de URLs de fotos
+  createdAt: timestamp,
+  updatedAt: timestamp
+}
+```
+
+### Colección: `corrective_tasks` (correctivas)
+```javascript
+{
+  clientId: "client_id",                 // Referencia al cliente
+  originVisitId: "visit_id",             // ID de la visita donde surgió
+  description: "Extintor vencido",       // Descripción del problema
+  priority: "urgent",                    // urgent, normal, next_visit
+  status: "pending",                     // pending, in_progress, completed
+  reportedDate: timestamp,               // Fecha cuando se detectó
+  completedDate: timestamp,              // Fecha de completado
+  reportedBy: "Técnico",                // Quien reportó
+  completedBy: ["Técnico1"],            // Array de quien completó
+  notes: "Observaciones",               // Notas adicionales
+  photos: [],                          // Array de URLs de fotos
+  createdAt: timestamp,
+  updatedAt: timestamp
+}
+```
+
+### Colección: `users`
+```javascript
+{
+  name: "Juan Pérez",
+  email: "juan@empresa.com",
+  role: "admin" // o "technician"
+}
+```
+
+## 🎨 Convenciones de Diseño
+
+### Colores en la Navegación
+- **Panel de Control**: Azul (`text-blue-600`)
+- **Clientes**: Verde (`text-green-600`)
+- **Visitas**: Morado (`text-purple-600`)
+- **Tareas Pendientes**: Naranja (`text-orange-600`)
+
+### Iconos Lucide Utilizados
+- **LayoutDashboard**: Panel de Control
+- **Users**: Clientes
+- **Calendar**: Visitas
+- **AlertTriangle**: Tareas Pendientes
+- **Eye**: Ver detalle
+- **Edit**: Editar
+- **Trash2**: Eliminar
+- **Menu/X**: Navegación móvil
+- **LogOut**: Cerrar sesión
+
+### Estados y Prioridades
+**Estados de visitas**: `scheduled`, `completed`
+**Estados de tareas**: `pending`, `in_progress`, `completed`
+**Prioridades**: `urgent`, `normal`, `next_visit`
+**Frecuencias**: `weekly`, `monthly`, `bimonthly`
+
+## 📱 Funcionalidades Implementadas
+
+### ✅ Autenticación
+- Login con email/contraseña
+- Login con Google
+- Registro de usuarios
+- Protección de rutas
+- Context de usuario global
+
+### ✅ Gestión de Clientes (CRUD Completo)
+- **Crear**: Formulario completo con validaciones
+- **Leer**: Lista con tabla, búsqueda y detalle completo
+- **Actualizar**: Formulario de edición pre-cargado
+- **Eliminar**: Con confirmación
+
+### ✅ Dashboard
+- Estadísticas generales
+- Próximas visitas (mock data)
+- Tareas urgentes (mock data)
+- Navegación con sidebar responsive
+
+### ✅ UI/UX
+- Responsive design (mobile-first)
+- Sidebar colapsible en móvil
+- Iconos profesionales con Lucide
+- Estados de carga y errores
+- Confirmaciones para acciones destructivas
+
+## 🔄 Flujo de Trabajo Planificado
+
+### Visitas Preventivas
+1. **Programar visita**: Admin crea visita para cliente específico
+2. **Técnico en campo**: Ve sus visitas del día en móvil
+3. **Realizar inspección**: Marca como completada, añade notas/fotos
+4. **Detectar problemas**: Si encuentra issues, crea tarea correctiva automáticamente
+
+### Tareas Correctivas
+1. **Originadas de visitas**: Se crean automáticamente cuando se detectan problemas
+2. **Manuales**: Admin puede crear directamente
+3. **Asignación flexible**: Cualquier técnico puede tomar cualquier tarea
+4. **Seguimiento**: Estados claros de progreso
+
+## 📋 Próximos Pasos Pendientes
+
+### 🎯 Alta Prioridad
+1. **Gestión de Visitas**
+   - `/visits` - Lista de todas las visitas
+   - `/visits/new` - Programar nueva visita
+   - `/visits/[id]` - Completar visita (formulario para técnicos)
+
+2. **Gestión de Tareas Correctivas**
+   - `/corrective-tasks` - Lista de tareas pendientes
+   - `/corrective-tasks/[id]` - Completar tarea
+   - `/corrective-tasks/new` - Crear tarea manual
+
+3. **Conectar Dashboard con datos reales**
+   - Reemplazar mock data con consultas a Firebase
+   - Estadísticas dinámicas
+
+### 🎯 Media Prioridad
+4. **Formulario de Completar Visita**
+   - Checklist de inspección
+   - Subida de fotos
+   - Creación automática de tareas correctivas
+
+5. **Calendario de Visitas**
+   - Vista de calendario mensual/semanal
+   - Drag & drop para reprogramar
+
+### 🎯 Baja Prioridad
+6. **PWA y Funcionalidad Offline**
+   - Configurar next-pwa
+   - Service workers
+   - Sincronización offline
+
+7. **Reportes y Exportación**
+   - PDFs de informes
+   - Envío automático por email
+
+## 🚀 Comandos Importantes
+```bash
+# Desarrollo
+npm run dev
+
+# Instalar dependencias nuevas
+npm install [package-name]
+
+# Dependencias ya instaladas
+npm install firebase lucide-react
+```
+
+## 🔧 Configuración Firebase
+
+### Reglas de Firestore
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+### Authentication Habilitado
+- ✅ Email/Password
+- ✅ Google
+
+## 📝 Notas Técnicas
+
+### Manejo de Errores
+- Todas las operaciones Firebase tienen try/catch
+- Mensajes de error user-friendly
+- Estados de loading en formularios
+
+### Ordenamiento de Datos
+- Se evitan orderBy complejos en Firestore para prevenir errores de índices
+- Ordenamiento se hace en el cliente (JavaScript) cuando es necesario
+
+### Responsive Design
+- Mobile-first approach
+- Sidebar colapsible en pantallas pequeñas
+- Tablas con scroll horizontal en móvil
+
+## 🎯 Objetivos del Proyecto
+- **Primario**: Sistema funcional para gestionar mantenimiento contra incendios
+- **Secundario**: Acceso móvil para técnicos en campo
+- **Futuro**: Funcionalidad offline completa
+
+---
+
+## 📞 Contacto del Desarrollo
+Este proyecto fue desarrollado paso a paso con documentación detallada. Cada archivo incluye comentarios con su ubicación para facilitar el mantenimiento.
+
+**Última actualización**: 30 de Mayo, 2025
+**Estado**: CRUD de Clientes completo ✅
+**Siguiente**: Implementar gestión de Visitas
