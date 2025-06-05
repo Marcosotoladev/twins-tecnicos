@@ -5,10 +5,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, CheckCircle, AlertTriangle, Camera, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, AlertTriangle, Camera, FileText, Trash2 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { getVisits, getClient, updateVisit, createCorrectiveTask } from '@/lib/firebase/operations';
+import { getVisits, getClient, updateVisit, createCorrectiveTask, deleteVisit } from '@/lib/firebase/operations';
 import { AVAILABLE_TECHNICIANS } from '@/lib/constants';
 
 export default function VisitDetail() {
@@ -18,6 +18,7 @@ export default function VisitDetail() {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   // Estado del formulario de completado
   const [completionData, setCompletionData] = useState({
@@ -80,7 +81,7 @@ export default function VisitDetail() {
     }
   }, [params.id, router]);
 
-const availableTechnicians = AVAILABLE_TECHNICIANS;
+  const availableTechnicians = AVAILABLE_TECHNICIANS;
 
   const handleTechnicianChange = (index, value) => {
     setCompletionData(prev => ({
@@ -174,6 +175,25 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
     }
   };
 
+  const handleDelete = async () => {
+    const confirmDelete = confirm(
+      `¿Estás seguro de eliminar la visita de ${client?.companyName}?\n\n${visit?.status === 'completed' ? 'Esta visita ya fue completada. ' : ''}Esta acción no se puede deshacer.`
+    );
+    
+    if (!confirmDelete) return;
+
+    try {
+      setDeleting(true);
+      await deleteVisit(params.id);
+      router.push('/visits');
+    } catch (error) {
+      console.error('Error eliminando visita:', error);
+      alert('Error al eliminar la visita');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return 'Sin fecha';
     const d = date.toDate ? date.toDate() : new Date(date);
@@ -244,12 +264,24 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
               </div>
             </div>
             
-            {isCompleted && (
-              <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-2 rounded-full">
-                <CheckCircle size={16} />
-                <span className="text-sm font-medium">Completada</span>
-              </div>
-            )}
+            <div className="flex items-center space-x-3">
+              {isCompleted && (
+                <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-2 rounded-full">
+                  <CheckCircle size={16} />
+                  <span className="text-sm font-medium">Completada</span>
+                </div>
+              )}
+              
+              {/* Botón eliminar - disponible para todas las visitas */}
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 flex items-center space-x-2"
+              >
+                <Trash2 size={16} />
+                <span>{deleting ? 'Eliminando...' : 'Eliminar'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Información del cliente */}
