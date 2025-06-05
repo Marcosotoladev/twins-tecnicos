@@ -31,7 +31,7 @@ export default function Dashboard() {
     const loadDashboardData = async () => {
       try {
         setLoading(true);
-        
+
         // Cargar todos los datos en paralelo
         const [clientsData, visitsData, tasksData] = await Promise.all([
           getClients(),
@@ -51,10 +51,10 @@ export default function Dashboard() {
         // Calcular estadísticas
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        
+
         const weekFromNow = new Date(today);
         weekFromNow.setDate(weekFromNow.getDate() + 7);
 
@@ -67,11 +67,7 @@ export default function Dashboard() {
         });
 
         // Visitas de esta semana
-        const visitasSemana = visitsData.filter(visit => {
-          if (!visit.scheduledDate) return false;
-          const visitDate = visit.scheduledDate.toDate ? visit.scheduledDate.toDate() : new Date(visit.scheduledDate);
-          return visitDate >= today && visitDate <= weekFromNow && visit.status === 'scheduled';
-        });
+
 
         // Próximas visitas (siguientes 5)
         const proximasVisitas = visitsData
@@ -93,8 +89,13 @@ export default function Dashboard() {
 
         // Tareas urgentes y pendientes
         const tareasPendientes = tasksData.filter(task => task.status === 'pending' || task.status === 'in_progress');
+
         const tareasUrgentesData = tareasPendientes
-          .filter(task => task.priority === 'urgent')
+          // Mostrar todas las pendientes, ordenadas por prioridad (urgentes primero)
+          .sort((a, b) => {
+            const priorityOrder = { 'urgent': 0, 'normal': 1, 'next_visit': 2 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          })
           .sort((a, b) => {
             const dateA = a.reportedDate.toDate ? a.reportedDate.toDate() : new Date(a.reportedDate);
             const dateB = b.reportedDate.toDate ? b.reportedDate.toDate() : new Date(b.reportedDate);
@@ -110,7 +111,6 @@ export default function Dashboard() {
           totalClientes: clientsData.length,
           totalVisitas: visitsData.length,
           visitasHoy: visitasHoy.length,
-          visitasSemana: visitasSemana.length,
           tareasCorrectivas: tasksData.length,
           tareasPendientes: tareasPendientes.length,
           tareasUrgentes: tareasUrgentesData.length
@@ -171,7 +171,7 @@ export default function Dashboard() {
     const today = new Date();
     const diffTime = d - today;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'text-red-600 font-medium'; // Hoy
     if (diffDays === 1) return 'text-orange-600 font-medium'; // Mañana
     if (diffDays <= 3) return 'text-yellow-600'; // Próximos días
@@ -235,86 +235,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <TrendingUp className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Visitas Semana
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        {stats.visitasSemana}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-blue-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link href="/visits" className="font-medium text-blue-700 hover:text-blue-900">
-                    Gestionar visitas
-                  </Link>
-                </div>
-              </div>
-            </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <AlertTriangle className="h-8 w-8 text-orange-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Tareas Pendientes
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        {stats.tareasPendientes}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-orange-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link href="/corrective-tasks" className="font-medium text-orange-700 hover:text-orange-900">
-                    Ver tareas
-                  </Link>
-                </div>
-              </div>
-            </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Users className="h-8 w-8 text-green-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Clientes Activos
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        {stats.totalClientes}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-green-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link href="/clients" className="font-medium text-green-700 hover:text-green-900">
-                    Gestionar clientes
-                  </Link>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Calendario */}
@@ -328,8 +250,8 @@ export default function Dashboard() {
                 + Programar Visita
               </Link>
             </div>
-            <Calendar 
-              visits={allVisits} 
+            <Calendar
+              visits={allVisits}
               clients={clients}
               onDateClick={handleDateClick}
             />
@@ -386,29 +308,40 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Tareas urgentes */}
+            {/* Tareas pendientes */}
             <div className="bg-white shadow rounded-lg">
               <div className="px-4 py-5 sm:p-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
-                  <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
-                  Tareas Urgentes
+                  <AlertTriangle className="h-5 w-5 mr-2 text-orange-600" />
+                  Tareas Pendientes
                 </h3>
                 <div className="mt-5 space-y-4">
                   {tareasUrgentes.length === 0 ? (
                     <p className="text-sm text-gray-500 text-center py-4">
-                      {stats.tareasPendientes === 0 
-                        ? 'No hay tareas pendientes' 
-                        : 'No hay tareas urgentes'
+                      {stats.tareasPendientes === 0
+                        ? 'No hay tareas pendientes'
+                        : 'No hay tareas para mostrar'
                       }
                     </p>
                   ) : (
-                    tareasUrgentes.map((tarea) => (
-                      <div key={tarea.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    tareasUrgentes.slice(0, 5).map((tarea) => (
+                      <div key={tarea.id} className={`p-3 border rounded-lg ${tarea.priority === 'urgent'
+                          ? 'bg-red-50 border-red-200'
+                          : tarea.priority === 'normal'
+                            ? 'bg-yellow-50 border-yellow-200'
+                            : 'bg-blue-50 border-blue-200'
+                        }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500 text-white">
-                                Urgente
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tarea.priority === 'urgent'
+                                  ? 'bg-red-500 text-white'
+                                  : tarea.priority === 'normal'
+                                    ? 'bg-yellow-500 text-white'
+                                    : 'bg-blue-500 text-white'
+                                }`}>
+                                {tarea.priority === 'urgent' ? 'Urgente' :
+                                  tarea.priority === 'normal' ? 'Normal' : 'Próxima Visita'}
                               </span>
                               <p className="ml-2 text-sm font-medium text-gray-900">
                                 {tarea.client?.companyName || 'Cliente no encontrado'}
@@ -424,10 +357,10 @@ export default function Dashboard() {
                               {(() => {
                                 const days = getDaysAgo(tarea.reportedDate);
                                 return days !== null && (
-                                  <p className={`text-xs ${days > 3 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                                    {days === 0 ? 'Hoy' : 
-                                     days === 1 ? 'Ayer' : 
-                                     `Hace ${days} días`}
+                                  <p className={`text-xs ${days > 7 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                                    {days === 0 ? 'Hoy' :
+                                      days === 1 ? 'Ayer' :
+                                        `Hace ${days} días`}
                                   </p>
                                 );
                               })()}
@@ -441,37 +374,44 @@ export default function Dashboard() {
                 <div className="mt-4">
                   <Link
                     href="/corrective-tasks"
-                    className="w-full bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 text-center block"
-                    >
-                   Ver Todas las Tareas
-                 </Link>
-               </div>
-             </div>
-           </div>
-         </div>
+                    className="w-full bg-orange-600 text-white px-4 py-2 rounded-md text-sm hover:bg-orange-700 text-center block"
+                  >
+                    Ver Todas las Tareas
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
 
-         {/* Resumen adicional */}
-         <div className="bg-white shadow rounded-lg p-6">
-           <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen General</h3>
-           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-             <div className="text-center p-4 bg-blue-50 rounded-lg">
-               <div className="text-2xl font-bold text-blue-600">{stats.totalVisitas}</div>
-               <div className="text-gray-600">Total Visitas</div>
-             </div>
-             <div className="text-center p-4 bg-orange-50 rounded-lg">
-               <div className="text-2xl font-bold text-orange-600">{stats.tareasCorrectivas}</div>
-               <div className="text-gray-600">Total Tareas</div>
-             </div>
-             <div className="text-center p-4 bg-green-50 rounded-lg">
-               <div className="text-2xl font-bold text-green-600">
-                 {stats.totalVisitas > 0 ? Math.round((stats.totalVisitas - stats.visitasSemana) / stats.totalVisitas * 100) : 0}%
-               </div>
-               <div className="text-gray-600">Visitas Completadas</div>
-             </div>
-           </div>
-         </div>
-       </div>
-     </DashboardLayout>
-   </ProtectedRoute>
- );
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Users className="h-8 w-8 text-green-600" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Clientes Activos
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">
+                        {stats.totalClientes}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-green-50 px-5 py-3">
+                <div className="text-sm">
+                  <Link href="/clients" className="font-medium text-green-700 hover:text-green-900">
+                    Gestionar clientes
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }
