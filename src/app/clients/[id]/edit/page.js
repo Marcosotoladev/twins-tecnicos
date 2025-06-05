@@ -154,13 +154,12 @@ export default function EditClient() {
                 {/* Nombre del Referente */}
                 <div>
                   <label htmlFor="referentName" className="block text-sm font-medium text-gray-700">
-                    Nombre del Referente *
+                    Nombre del Referente 
                   </label>
                   <input
                     type="text"
                     id="referentName"
                     name="referentName"
-                    required
                     value={formData.referentName}
                     onChange={handleChange}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -171,13 +170,12 @@ export default function EditClient() {
                 {/* Cargo del Referente */}
                 <div>
                   <label htmlFor="referentPosition" className="block text-sm font-medium text-gray-700">
-                    Cargo del Referente *
+                    Cargo del Referente 
                   </label>
                   <input
                     type="text"
                     id="referentPosition"
                     name="referentPosition"
-                    required
                     value={formData.referentPosition}
                     onChange={handleChange}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -188,7 +186,7 @@ export default function EditClient() {
                 {/* Dirección */}
                 <div className="sm:col-span-2">
                   <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                    Dirección *
+                    Dirección 
                   </label>
                   <textarea
                     id="address"
@@ -221,7 +219,7 @@ export default function EditClient() {
                 {/* Frecuencia */}
                 <div>
                   <label htmlFor="frequency" className="block text-sm font-medium text-gray-700">
-                    Frecuencia de Mantenimiento *
+                    Frecuencia de Mantenimiento 
                   </label>
                   <select
                     id="frequency"
@@ -234,6 +232,8 @@ export default function EditClient() {
                     <option value="weekly">Semanal</option>
                     <option value="monthly">Mensual</option>
                     <option value="bimonthly">Bimestral</option>
+                    <option value="quarterly">Trimestral</option>
+                    <option value="other">Otro</option>
                   </select>
                 </div>
 

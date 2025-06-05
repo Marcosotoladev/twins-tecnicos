@@ -168,6 +168,8 @@ export default function NewClient() {
                     <option value="weekly">Semanal</option>
                     <option value="monthly">Mensual</option>
                     <option value="bimonthly">Bimestral</option>
+                    <option value="quarterly">Trimestral</option>
+                    <option value="other">Otro</option>
                   </select>
                 </div>
 

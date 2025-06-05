@@ -42,19 +42,26 @@ export default function Visits() {
     return map;
   }, {});
 
-  // Filtrar visitas
-  const filteredVisits = visits.filter(visit => {
-    const client = clientsMap[visit.clientId];
-    const clientName = client?.companyName || '';
+  // Filtrar y ordenar visitas
+  const filteredVisits = visits
+    .filter(visit => {
+      const client = clientsMap[visit.clientId];
+      const clientName = client?.companyName || '';
 
-    // Filtro por estado
-    const matchesStatus = filter === 'all' || visit.status === filter;
+      // Filtro por estado
+      const matchesStatus = filter === 'all' || visit.status === filter;
 
-    // Filtro por búsqueda
-    const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase());
+      // Filtro por búsqueda
+      const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesStatus && matchesSearch;
-  });
+      return matchesStatus && matchesSearch;
+    })
+    .sort((a, b) => {
+      // Ordenar por fecha programada de más antigua a más futura
+      const dateA = a.scheduledDate?.toDate ? a.scheduledDate.toDate() : new Date(a.scheduledDate || 0);
+      const dateB = b.scheduledDate?.toDate ? b.scheduledDate.toDate() : new Date(b.scheduledDate || 0);
+      return dateA - dateB;
+    });
 
   const getStatusColor = (status) => {
     const colors = {
