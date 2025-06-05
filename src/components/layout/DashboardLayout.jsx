@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Calendar, AlertTriangle, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, AlertTriangle, Menu, X, LogOut, Bell } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,12 +22,14 @@ export default function DashboardLayout({ children }) {
     }
   };
 
-  const navigation = [
-    { name: 'Panel de Control', href: '/dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
-    { name: 'Clientes', href: '/clients', icon: Users, color: 'text-green-600' },
-    { name: 'Visitas', href: '/visits', icon: Calendar, color: 'text-purple-600' },
-    { name: 'Tareas Pendientes', href: '/corrective-tasks', icon: AlertTriangle, color: 'text-orange-600' },
-  ];
+
+const navigation = [
+  { name: 'Panel de Control', href: '/dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
+  { name: 'Clientes', href: '/clients', icon: Users, color: 'text-green-600' },
+  { name: 'Visitas', href: '/visits', icon: Calendar, color: 'text-purple-600' },
+  { name: 'Tareas Pendientes', href: '/corrective-tasks', icon: AlertTriangle, color: 'text-orange-600' },
+  { name: 'Recordatorios', href: '/reminders', icon: Bell, color: 'text-indigo-600' },
+];
 
   return (
     <div className="min-h-screen bg-gray-50">

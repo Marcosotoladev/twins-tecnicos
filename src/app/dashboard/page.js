@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Calendar as CalendarIcon, AlertTriangle, CheckCircle, Users, Clock, TrendingUp } from 'lucide-react';
+import { Calendar as CalendarIcon, AlertTriangle, CheckCircle, Users, Clock, TrendingUp, Bell, Plus, ChevronRight } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Calendar from '@/components/Calendar';
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [tareasUrgentes, setTareasUrgentes] = useState([]);
   const [clients, setClients] = useState([]);
   const [allVisits, setAllVisits] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +42,24 @@ export default function Dashboard() {
 
         setClients(clientsData);
         setAllVisits(visitsData);
+
+        // Cargar recordatorios del localStorage
+        const savedReminders = localStorage.getItem('reminders');
+        if (savedReminders) {
+          const parsedReminders = JSON.parse(savedReminders);
+          
+          // Filtrar solo los pendientes y ordenar por fecha
+          const pendingReminders = parsedReminders
+            .filter(reminder => !reminder.completed)
+            .sort((a, b) => {
+              const dateA = new Date(a.date + ' ' + (a.time || '00:00'));
+              const dateB = new Date(b.date + ' ' + (b.time || '00:00'));
+              return dateA - dateB;
+            })
+            .slice(0, 5); // Mostrar máximo 5 recordatorios
+
+          setReminders(pendingReminders);
+        }
 
         // Crear mapa de clientes para referencias rápidas
         const clientsMap = clientsData.reduce((map, client) => {
@@ -66,9 +85,6 @@ export default function Dashboard() {
           return visitDate.getTime() === today.getTime() && visit.status === 'scheduled';
         });
 
-        // Visitas de esta semana
-
-
         // Próximas visitas (siguientes 5)
         const proximasVisitas = visitsData
           .filter(visit => {
@@ -91,7 +107,6 @@ export default function Dashboard() {
         const tareasPendientes = tasksData.filter(task => task.status === 'pending' || task.status === 'in_progress');
 
         const tareasUrgentesData = tareasPendientes
-          // Mostrar todas las pendientes, ordenadas por prioridad (urgentes primero)
           .sort((a, b) => {
             const priorityOrder = { 'urgent': 0, 'normal': 1, 'next_visit': 2 };
             return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -99,7 +114,7 @@ export default function Dashboard() {
           .sort((a, b) => {
             const dateA = a.reportedDate.toDate ? a.reportedDate.toDate() : new Date(a.reportedDate);
             const dateB = b.reportedDate.toDate ? b.reportedDate.toDate() : new Date(b.reportedDate);
-            return dateB - dateA; // Más recientes primero
+            return dateB - dateA;
           })
           .slice(0, 5)
           .map(task => ({
@@ -131,12 +146,45 @@ export default function Dashboard() {
 
   const handleDateClick = (date, visits) => {
     if (visits.length > 0) {
-      // Aquí podrías abrir un modal o navegar a una vista detallada
       console.log('Visitas para', date.toLocaleDateString('es-AR'), visits);
     }
   };
 
-  // ... (mantener todas las funciones formatDate, formatTime, getDaysAgo, getDateStatus igual)
+  // Funciones para recordatorios
+  const formatReminderDate = (date) => {
+    const today = new Date();
+    const reminderDate = new Date(date);
+    
+    today.setHours(0, 0, 0, 0);
+    reminderDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = reminderDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Mañana';
+    if (diffDays === -1) return 'Ayer';
+    if (diffDays < 0) return `Hace ${Math.abs(diffDays)} días`;
+    if (diffDays <= 7) return `En ${diffDays} días`;
+    
+    return reminderDate.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit'
+    });
+  };
+
+  const isReminderOverdue = (date, time) => {
+    const reminderDateTime = new Date(date + ' ' + (time || '23:59'));
+    return reminderDateTime < new Date();
+  };
+
+  const isReminderToday = (date) => {
+    const today = new Date();
+    const reminderDate = new Date(date);
+    return today.toDateString() === reminderDate.toDateString();
+  };
+
+  // Funciones existentes
   const formatDate = (date) => {
     if (!date) return 'Sin fecha';
     const d = date.toDate ? date.toDate() : new Date(date);
@@ -172,11 +220,14 @@ export default function Dashboard() {
     const diffTime = d - today;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'text-red-600 font-medium'; // Hoy
-    if (diffDays === 1) return 'text-orange-600 font-medium'; // Mañana
-    if (diffDays <= 3) return 'text-yellow-600'; // Próximos días
+    if (diffDays === 0) return 'text-red-600 font-medium';
+    if (diffDays === 1) return 'text-orange-600 font-medium';
+    if (diffDays <= 3) return 'text-yellow-600';
     return 'text-gray-600';
   };
+
+  const pendingRemindersCount = reminders.length;
+  const overdueRemindersCount = reminders.filter(r => isReminderOverdue(r.date, r.time)).length;
 
   if (loading) {
     return (
@@ -205,38 +256,32 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {/* ... mantener todas las cards de estadísticas igual ... */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <CalendarIcon className="h-8 w-8 text-red-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Visitas Hoy
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        {stats.visitasHoy}
-                      </dd>
-                    </dl>
-                  </div>
+          {/* Stats Card - Solo Visitas Hoy */}
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <CalendarIcon className="h-8 w-8 text-red-600" />
                 </div>
-              </div>
-              <div className="bg-red-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link href="/visits" className="font-medium text-red-700 hover:text-red-900">
-                    Ver agenda
-                  </Link>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Visitas Hoy
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.visitasHoy}
+                    </dd>
+                  </dl>
                 </div>
               </div>
             </div>
-
-
-
+            <div className="bg-red-50 px-5 py-3">
+              <div className="text-sm">
+                <Link href="/visits" className="font-medium text-red-700 hover:text-red-900">
+                  Ver agenda
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Calendario */}
@@ -257,11 +302,10 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Contenido principal en dos columnas */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* ... mantener las secciones de próximas visitas y tareas urgentes igual ... */}
-            {/* Próximas visitas */}
-            <div className="bg-white shadow rounded-lg">
+          {/* Contenido principal - orden mobile-first */}
+          <div className="space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
+            {/* Próximas visitas - Orden 1 en mobile */}
+            <div className="bg-white shadow rounded-lg order-1">
               <div className="px-4 py-5 sm:p-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
                   <CalendarIcon className="h-5 w-5 mr-2 text-blue-600" />
@@ -308,8 +352,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Tareas pendientes */}
-            <div className="bg-white shadow rounded-lg">
+            {/* Tareas pendientes - Orden 2 en mobile */}
+            <div className="bg-white shadow rounded-lg order-2">
               <div className="px-4 py-5 sm:p-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
                   <AlertTriangle className="h-5 w-5 mr-2 text-orange-600" />
@@ -381,35 +425,109 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Users className="h-8 w-8 text-green-600" />
+            {/* Recordatorios - Orden 3 en mobile */}
+            <div className="bg-white shadow rounded-lg order-3">
+              <div className="px-4 py-5 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Bell className="h-5 w-5 text-indigo-600" />
+                    <h3 className="text-lg font-medium text-gray-900">Recordatorios</h3>
+                    {pendingRemindersCount > 0 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                        {pendingRemindersCount}
+                      </span>
+                    )}
+                    {overdueRemindersCount > 0 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        {overdueRemindersCount} vencidos
+                      </span>
+                    )}
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Clientes Activos
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        {stats.totalClientes}
-                      </dd>
-                    </dl>
-                  </div>
+                  <Link
+                    href="/reminders"
+                    className="text-sm text-indigo-600 hover:text-indigo-900 font-medium flex items-center"
+                  >
+                    Ver todos
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Link>
                 </div>
-              </div>
-              <div className="bg-green-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link href="/clients" className="font-medium text-green-700 hover:text-green-900">
-                    Gestionar clientes
+
+                <div className="space-y-3">
+                  {pendingRemindersCount === 0 ? (
+                    <div className="text-center py-4">
+                      <Bell className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500 mb-3">No hay recordatorios pendientes</p>
+                      <Link
+                        href="/reminders"
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Crear recordatorio
+                      </Link>
+                    </div>
+                  ) : (
+                    reminders.map((reminder) => (
+                      <div
+                        key={reminder.id}
+                        className={`p-3 rounded-lg border ${
+                          isReminderOverdue(reminder.date, reminder.time) 
+                            ? 'border-red-200 bg-red-50' 
+                            : isReminderToday(reminder.date)
+                            ? 'border-orange-200 bg-orange-50'
+                            : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <h4 className="text-sm font-medium text-gray-900 truncate">
+                                {reminder.title}
+                              </h4>
+                              {isReminderOverdue(reminder.date, reminder.time) && (
+                                <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                              )}
+                            </div>
+                            
+                            {reminder.description && (
+                              <p className="text-xs text-gray-600 mt-1 truncate">
+                                {reminder.description}
+                              </p>
+                            )}
+                            
+                            <div className="flex items-center space-x-3 mt-2">
+                              <div className="flex items-center text-xs text-gray-500">
+                                <CalendarIcon className="h-3 w-3 mr-1" />
+                                <span className={isReminderOverdue(reminder.date, reminder.time) ? 'text-red-600' : ''}>
+                                  {formatReminderDate(reminder.date)}
+                                </span>
+                              </div>
+                              
+                              {reminder.time && (
+                                <div className="flex items-center text-xs text-gray-500">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  <span>{reminder.time}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <Link
+                    href="/reminders"
+                    className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md text-sm hover:bg-indigo-700 text-center block"
+                  >
+                    Ver Todos los Recordatorios
                   </Link>
                 </div>
               </div>
             </div>
-
+          </div>
         </div>
       </DashboardLayout>
     </ProtectedRoute>
