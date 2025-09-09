@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Users, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, Trash2, AlertTriangle, CheckCircle } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { getVisits, getClient, updateVisit, deleteVisit, getClients } from '@/lib/firebase/operations';
@@ -20,23 +20,24 @@ export default function EditVisit() {
   const [visit, setVisit] = useState(null);
   const [client, setClient] = useState(null);
   const [clients, setClients] = useState([]);
+  const [showPastDateWarning, setShowPastDateWarning] = useState(false);
   
   const [formData, setFormData] = useState({
     clientId: '',
     scheduledDate: '',
     scheduledTime: '09:00',
     technicians: [''],
-    notes: ''
+    notes: '',
+    allowPastDate: false
   });
 
-const availableTechnicians = AVAILABLE_TECHNICIANS;
+  const availableTechnicians = AVAILABLE_TECHNICIANS;
 
   useEffect(() => {
     const loadVisitData = async () => {
       try {
         setLoading(true);
         
-        // Cargar visitas y clientes
         const [visits, clientsData] = await Promise.all([
           getVisits(),
           getClients()
@@ -46,13 +47,6 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
         
         if (!visitData) {
           alert('Visita no encontrada');
-          router.push('/visits');
-          return;
-        }
-
-        // Verificar que la visita se pueda editar
-        if (visitData.status === 'completed') {
-          alert('No se puede editar una visita completada');
           router.push('/visits');
           return;
         }
@@ -68,6 +62,12 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
         const dateString = visitDate.toISOString().split('T')[0];
         const timeString = visitDate.toTimeString().split(' ')[0].substring(0, 5);
 
+        // Verificar si la fecha actual es pasada
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const visitDateOnly = new Date(dateString);
+        const isPastDate = visitDateOnly < today;
+
         setFormData({
           clientId: visitData.clientId,
           scheduledDate: dateString,
@@ -75,8 +75,12 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
           technicians: visitData.technicians && visitData.technicians.length > 0 
             ? visitData.technicians 
             : [''],
-          notes: visitData.notes || ''
+          notes: visitData.notes || '',
+          allowPastDate: isPastDate // Permitir automáticamente si ya era fecha pasada
         });
+
+        setShowPastDateWarning(isPastDate);
+        
       } catch (error) {
         console.error('Error cargando visita:', error);
         alert('Error al cargar la visita');
@@ -92,11 +96,27 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
   }, [params.id, router]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const { name, value, type, checked } = e.target;
+    
+    if (name === 'scheduledDate') {
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const isPastDate = selectedDate < today;
+      setShowPastDateWarning(isPastDate);
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        allowPastDate: isPastDate ? prev.allowPastDate : false
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   const handleTechnicianChange = (index, value) => {
@@ -137,20 +157,28 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
       return;
     }
 
+    // Verificar fecha pasada si no está permitida
+    const selectedDate = new Date(formData.scheduledDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today && !formData.allowPastDate) {
+      alert('Para editar la visita con fecha pasada, debes confirmar la casilla correspondiente');
+      return;
+    }
+
     try {
       setSaving(true);
       
-      // Combinar fecha y hora
       const dateTime = new Date(`${formData.scheduledDate}T${formData.scheduledTime}:00`);
-      
-      // Filtrar técnicos vacíos
       const technicians = formData.technicians.filter(tech => tech.trim() !== '');
 
       const updateData = {
         clientId: formData.clientId,
         scheduledDate: dateTime,
         technicians: technicians,
-        notes: formData.notes
+        notes: formData.notes,
+        isPastDateVisit: selectedDate < today // Actualizar flag
       };
 
       await updateVisit(params.id, updateData);
@@ -194,8 +222,37 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
     });
   };
 
-  // Obtener la fecha mínima (hoy)
-  const today = new Date().toISOString().split('T')[0];
+  const getVisitStatusInfo = () => {
+    if (!visit) return null;
+    
+    const isCompleted = visit.status === 'completed';
+    const visitDate = visit.scheduledDate.toDate ? visit.scheduledDate.toDate() : new Date(visit.scheduledDate);
+    const today = new Date();
+    const isPast = visitDate < today;
+    
+    if (isCompleted) {
+      return {
+        color: 'green',
+        icon: CheckCircle,
+        title: 'Visita Completada',
+        message: 'Esta visita ya fue completada. Puedes editarla para hacer correcciones.'
+      };
+    } else if (isPast) {
+      return {
+        color: 'amber',
+        icon: AlertTriangle,
+        title: 'Visita Vencida',
+        message: 'Esta visita tenía fecha pasada y no fue completada.'
+      };
+    } else {
+      return {
+        color: 'blue',
+        icon: Calendar,
+        title: 'Visita Programada',
+        message: 'Esta visita está programada para el futuro.'
+      };
+    }
+  };
 
   if (loading) {
     return (
@@ -211,6 +268,8 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
       </ProtectedRoute>
     );
   }
+
+  const statusInfo = getVisitStatusInfo();
 
   return (
     <ProtectedRoute>
@@ -228,12 +287,11 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Editar Visita</h1>
                 <p className="mt-1 text-sm text-gray-500">
-                  Modifica la visita programada para {client?.companyName}
+                  Modifica la visita para {client?.companyName}
                 </p>
               </div>
             </div>
             
-            {/* Botón eliminar */}
             <button
               onClick={handleDelete}
               disabled={deleting}
@@ -244,15 +302,27 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
             </button>
           </div>
 
-          {/* Información actual */}
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">Visita Actual:</h4>
-            <div className="text-sm text-blue-800">
-              <p><strong>{client?.companyName}</strong></p>
-              <p>Fecha programada: {formatDate(visit?.scheduledDate)}</p>
-              <p>Técnicos: {visit?.technicians?.join(', ') || 'Sin asignar'}</p>
+          {/* Estado de la visita */}
+          {statusInfo && (
+            <div className={`bg-${statusInfo.color}-50 border border-${statusInfo.color}-200 rounded-md p-4`}>
+              <div className="flex items-start">
+                <statusInfo.icon className={`h-5 w-5 text-${statusInfo.color}-600 mr-3 mt-0.5`} />
+                <div>
+                  <h4 className={`text-sm font-medium text-${statusInfo.color}-900 mb-1`}>
+                    {statusInfo.title}
+                  </h4>
+                  <p className={`text-sm text-${statusInfo.color}-800 mb-2`}>
+                    {statusInfo.message}
+                  </p>
+                  <div className={`text-sm text-${statusInfo.color}-800`}>
+                    <p><strong>{client?.companyName}</strong></p>
+                    <p>Fecha original: {formatDate(visit?.scheduledDate)}</p>
+                    <p>Técnicos: {visit?.technicians?.join(', ') || 'Sin asignar'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Formulario */}
           <div className="bg-white shadow rounded-lg">
@@ -292,11 +362,36 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
                     id="scheduledDate"
                     name="scheduledDate"
                     required
-                    min={today}
                     value={formData.scheduledDate}
                     onChange={handleChange}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
+                  
+                  {/* Warning para fechas pasadas */}
+                  {showPastDateWarning && (
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <div className="flex items-start">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-amber-800">
+                            Fecha pasada seleccionada. Útil para registrar visitas que ya ocurrieron.
+                          </p>
+                          <label className="flex items-center mt-2">
+                            <input
+                              type="checkbox"
+                              name="allowPastDate"
+                              checked={formData.allowPastDate}
+                              onChange={handleChange}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-2 text-sm text-amber-800">
+                              Confirmo el cambio a fecha pasada
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>

@@ -1,10 +1,10 @@
-// src/app/visits/page.js
+// src/app/visits/page.js - Versión mejorada con indicadores de fechas pasadas
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Calendar, Clock, User, Building, Plus, Filter } from 'lucide-react';
+import { Calendar, Clock, User, Building, Plus, Filter, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { getVisits, getClients } from '@/lib/firebase/operations';
@@ -13,7 +13,7 @@ export default function Visits() {
   const [visits, setVisits] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, scheduled, completed
+  const [filter, setFilter] = useState('all'); // all, scheduled, completed, overdue
   const [searchTerm, setSearchTerm] = useState('');
 
   const loadData = async () => {
@@ -42,6 +42,22 @@ export default function Visits() {
     return map;
   }, {});
 
+  // Clasificar visitas por estado
+  const classifyVisit = (visit) => {
+    const visitDate = visit.scheduledDate?.toDate ? visit.scheduledDate.toDate() : new Date(visit.scheduledDate || 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    visitDate.setHours(0, 0, 0, 0);
+
+    if (visit.status === 'completed') {
+      return 'completed';
+    } else if (visitDate < today) {
+      return 'overdue';
+    } else {
+      return 'scheduled';
+    }
+  };
+
   // Filtrar y ordenar visitas
   const filteredVisits = visits
     .filter(visit => {
@@ -49,7 +65,14 @@ export default function Visits() {
       const clientName = client?.companyName || '';
 
       // Filtro por estado
-      const matchesStatus = filter === 'all' || visit.status === filter;
+      let matchesStatus = false;
+      if (filter === 'all') {
+        matchesStatus = true;
+      } else if (filter === 'overdue') {
+        matchesStatus = classifyVisit(visit) === 'overdue';
+      } else {
+        matchesStatus = visit.status === filter || classifyVisit(visit) === filter;
+      }
 
       // Filtro por búsqueda
       const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -57,26 +80,30 @@ export default function Visits() {
       return matchesStatus && matchesSearch;
     })
     .sort((a, b) => {
-      // Ordenar por fecha programada de más antigua a más futura
+      // Ordenar por fecha programada de más reciente a más antigua
       const dateA = a.scheduledDate?.toDate ? a.scheduledDate.toDate() : new Date(a.scheduledDate || 0);
       const dateB = b.scheduledDate?.toDate ? b.scheduledDate.toDate() : new Date(b.scheduledDate || 0);
-      return dateA - dateB;
+      return dateB - dateA;
     });
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (visit) => {
+    const classification = classifyVisit(visit);
     const colors = {
       'scheduled': 'bg-blue-100 text-blue-800',
-      'completed': 'bg-green-100 text-green-800'
+      'completed': 'bg-green-100 text-green-800',
+      'overdue': 'bg-red-100 text-red-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[classification] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusLabel = (status) => {
+  const getStatusLabel = (visit) => {
+    const classification = classifyVisit(visit);
     const labels = {
       'scheduled': 'Programada',
-      'completed': 'Completada'
+      'completed': 'Completada',
+      'overdue': 'Vencida'
     };
-    return labels[status] || status;
+    return labels[classification] || visit.status;
   };
 
   const formatDate = (date) => {
@@ -88,6 +115,14 @@ export default function Visits() {
       year: 'numeric'
     });
   };
+
+  // Calcular estadísticas
+  const stats = visits.reduce((acc, visit) => {
+    const classification = classifyVisit(visit);
+    acc.total++;
+    acc[classification] = (acc[classification] || 0) + 1;
+    return acc;
+  }, { total: 0, scheduled: 0, completed: 0, overdue: 0 });
 
   return (
     <ProtectedRoute>
@@ -134,6 +169,7 @@ export default function Visits() {
                 >
                   <option value="all">Todas</option>
                   <option value="scheduled">Programadas</option>
+                  <option value="overdue">Vencidas</option>
                   <option value="completed">Completadas</option>
                 </select>
               </div>
@@ -190,6 +226,8 @@ export default function Visits() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredVisits.map((visit) => {
                       const client = clientsMap[visit.clientId];
+                      const classification = classifyVisit(visit);
+                      
                       return (
                         <tr key={visit.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -207,6 +245,9 @@ export default function Visits() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
+                              {classification === 'overdue' && (
+                                <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
+                              )}
                               <Calendar className="h-4 w-4 text-gray-400 mr-2" />
                               <span className="text-sm text-gray-900">
                                 {formatDate(visit.scheduledDate)}
@@ -214,8 +255,8 @@ export default function Visits() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(visit.status)}`}>
-                              {getStatusLabel(visit.status)}
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(visit)}`}>
+                              {getStatusLabel(visit)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -246,13 +287,36 @@ export default function Visits() {
                                     Editar
                                   </Link>
                                 </>
+                              ) : classification === 'overdue' ? (
+                                <>
+                                  <Link
+                                    href={`/visits/${visit.id}`}
+                                    className="text-orange-600 hover:text-orange-900"
+                                  >
+                                    Completar
+                                  </Link>
+                                  <Link
+                                    href={`/visits/${visit.id}/edit`}
+                                    className="text-indigo-600 hover:text-indigo-900"
+                                  >
+                                    Reprogramar
+                                  </Link>
+                                </>
                               ) : (
-                                <Link
-                                  href={`/visits/${visit.id}`}
-                                  className="text-gray-600 hover:text-gray-900"
-                                >
-                                  Ver Detalles
-                                </Link>
+                                <>
+                                  <Link
+                                    href={`/visits/${visit.id}`}
+                                    className="text-gray-600 hover:text-gray-900"
+                                  >
+                                    Ver Detalles
+                                  </Link>
+                                  <Link
+                                    href={`/visits/${visit.id}/edit`}
+                                    className="text-indigo-600 hover:text-indigo-900"
+                                  >
+                                    Editar
+                                  </Link>
+                                </>
                               )}
                             </div>
                           </td>
@@ -265,9 +329,9 @@ export default function Visits() {
             )}
           </div>
 
-          {/* Estadísticas */}
+          {/* Estadísticas actualizadas */}
           {!loading && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -280,7 +344,7 @@ export default function Visits() {
                           Total Visitas
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {visits.length}
+                          {stats.total}
                         </dd>
                       </dl>
                     </div>
@@ -300,7 +364,27 @@ export default function Visits() {
                           Programadas
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {visits.filter(v => v.status === 'scheduled').length}
+                          {stats.scheduled || 0}
+                        </dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <AlertTriangle className="h-8 w-8 text-red-600" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Vencidas
+                        </dt>
+                        <dd className="text-lg font-medium text-gray-900">
+                          {stats.overdue || 0}
                         </dd>
                       </dl>
                     </div>
@@ -320,7 +404,7 @@ export default function Visits() {
                           Completadas
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {visits.filter(v => v.status === 'completed').length}
+                          {stats.completed || 0}
                         </dd>
                       </dl>
                     </div>

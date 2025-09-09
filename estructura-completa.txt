@@ -1,0 +1,69 @@
+find . -not -path "./node_modules*" -not -path "./.next*" -not -path "./.git*" -not -path "./public/images*" | sort | sed 's/[^/]*\//|   /g; s/|   \([^|]\)/└── \1/' > estructura-completa.txt
+
+.
+└── .env.local
+└── documentacion.txt
+└── estructura-completa.txt
+└── jsconfig.json
+└── next.config.mjs
+└── package.json
+└── package-lock.json
+└── postcss.config.mjs
+└── public
+|   └── file.svg
+|   └── globe.svg
+|   └── next.svg
+|   └── vercel.svg
+|   └── window.svg
+└── README.md
+└── src
+|   └── app
+|   |   └── clients
+|   |   |   └── [id]
+|   |   |   |   └── edit
+|   |   |   |   |   └── page.js
+|   |   |   |   └── page.js
+|   |   |   └── new
+|   |   |   |   └── page.js
+|   |   |   └── page.js
+|   |   └── corrective-tasks
+|   |   |   └── [id]
+|   |   |   |   └── edit
+|   |   |   |   |   └── page.js
+|   |   |   |   └── page.js
+|   |   |   └── new
+|   |   |   |   └── page.js
+|   |   |   └── page.js
+|   |   └── dashboard
+|   |   |   └── page.js
+|   |   └── favicon.ico
+|   |   └── globals.css
+|   |   └── layout.js
+|   |   └── login
+|   |   |   └── page.js
+|   |   └── page.js
+|   |   └── register
+|   |   |   └── page.js
+|   |   └── reminders
+|   |   |   └── page.js
+|   |   └── visits
+|   |   |   └── [id]
+|   |   |   |   └── edit
+|   |   |   |   |   └── page.js
+|   |   |   |   └── page.js
+|   |   |   └── new
+|   |   |   |   └── page.js
+|   |   |   └── page.js
+|   └── components
+|   |   └── Calendar.jsx
+|   |   └── layout
+|   |   |   └── DashboardLayout.jsx
+|   |   └── ProtectedRoute.jsx
+|   └── lib
+|   |   └── constants.js
+|   |   └── contexts
+|   |   |   └── AuthContext.js
+|   |   └── firebase
+|   |   |   └── config.js
+|   |   |   └── firebase.js
+|   |   |   └── operations.js

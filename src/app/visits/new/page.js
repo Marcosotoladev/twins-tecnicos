@@ -5,13 +5,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { createVisit, getClients } from '@/lib/firebase/operations';
-
 import { AVAILABLE_TECHNICIANS } from '@/lib/constants';
-
 
 export default function NewVisit() {
   const router = useRouter();
@@ -21,16 +19,17 @@ export default function NewVisit() {
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [showPastDateWarning, setShowPastDateWarning] = useState(false);
   const [formData, setFormData] = useState({
     clientId: preselectedClientId || '',
     scheduledDate: '',
     scheduledTime: '09:00',
     technicians: [''],
-    notes: ''
+    notes: '',
+    allowPastDate: false
   });
 
-  // Lista de técnicos disponibles
-const availableTechnicians = AVAILABLE_TECHNICIANS;
+  const availableTechnicians = AVAILABLE_TECHNICIANS;
 
   useEffect(() => {
     const loadClients = async () => {
@@ -49,11 +48,28 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
   }, []);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const { name, value, type, checked } = e.target;
+    
+    if (name === 'scheduledDate') {
+      // Verificar si la fecha seleccionada es pasada
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const isPastDate = selectedDate < today;
+      setShowPastDateWarning(isPastDate);
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        allowPastDate: isPastDate ? prev.allowPastDate : false
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   const handleTechnicianChange = (index, value) => {
@@ -94,6 +110,16 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
       return;
     }
 
+    // Verificar fecha pasada si no está permitida
+    const selectedDate = new Date(formData.scheduledDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today && !formData.allowPastDate) {
+      alert('Para programar una visita con fecha pasada, debes confirmar la casilla correspondiente');
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -110,7 +136,9 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
         technicians: technicians,
         notes: formData.notes,
         completedDate: null,
-        photos: []
+        photos: [],
+        // Agregar flag si es fecha pasada para referencia futura
+        isPastDateVisit: selectedDate < today
       };
 
       await createVisit(visitData);
@@ -122,9 +150,6 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
       setLoading(false);
     }
   };
-
-  // Obtener la fecha mínima (hoy)
-  const today = new Date().toISOString().split('T')[0];
 
   return (
     <ProtectedRoute>
@@ -188,11 +213,36 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
                     id="scheduledDate"
                     name="scheduledDate"
                     required
-                    min={today}
                     value={formData.scheduledDate}
                     onChange={handleChange}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
+                  
+                  {/* Warning para fechas pasadas */}
+                  {showPastDateWarning && (
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <div className="flex items-start">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-amber-800">
+                            Has seleccionado una fecha pasada. Esto es útil para registrar visitas que ya ocurrieron.
+                          </p>
+                          <label className="flex items-center mt-2">
+                            <input
+                              type="checkbox"
+                              name="allowPastDate"
+                              checked={formData.allowPastDate}
+                              onChange={handleChange}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-2 text-sm text-amber-800">
+                              Confirmo que quiero programar/registrar esta visita con fecha pasada
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -264,7 +314,7 @@ const availableTechnicians = AVAILABLE_TECHNICIANS;
                   value={formData.notes}
                   onChange={handleChange}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Instrucciones especiales, horarios preferenciales, etc."
+                  placeholder="Instrucciones especiales, horarios preferenciales, motivo si es fecha pasada, etc."
                 />
               </div>
 
